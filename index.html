@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload de Arquivos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.16.0/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            background: #28a745;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #218838;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Upload de CSV e PDF</h2>
+        <form id="uploadForm">
+            <label>Selecione o arquivo CSV:</label>
+            <input type="file" id="csvFile" accept=".csv" required><br>
+            
+            <label>Selecione o arquivo PDF:</label>
+            <input type="file" id="pdfFile" accept=".pdf" required><br>
+            
+            <button type="button" onclick="processarArquivos()">Processar</button>
+        </form>
+        
+        <table id="resultadoTabela">
+            <thead>
+                <tr>
+                    <th>Nome da Propriedade</th>
+                    <th>Nome do Proprietário</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        async function processarArquivos() {
+            const csvFile = document.getElementById('csvFile').files[0];
+            const pdfFile = document.getElementById('pdfFile').files[0];
+
+            if (!csvFile || !pdfFile) {
+                alert("Por favor, selecione ambos os arquivos!");
+                return;
+            }
+
+            // Ler CSV
+            const csvText = await csvFile.text();
+            const csvData = Papa.parse(csvText, { header: true }).data;
+
+            // Ler PDF usando PDF.js
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(pdfFile);
+            reader.onload = async function () {
+                const pdfData = new Uint8Array(reader.result);
+                const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                let textoPDF = "";
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    textoPDF += textContent.items.map(item => item.str).join(" ") + " ";
+                }
+
+                compararDados(csvData, textoPDF);
+            };
+        }
+
+
+        function compararDados(csvData, textoPDF) {
+            const tabela = document.getElementById("resultadoTabela").getElementsByTagName("tbody")[0];
+            tabela.innerHTML = ""; // Limpa a tabela antes de adicionar novos resultados
+
+            csvData.forEach(item => {
+                const propriedade = item["Nome da propriedade"]?.trim();
+                const proprietario = item["Nome do proprietário"]?.trim();
+
+                if (textoPDF.includes(propriedade) || textoPDF.includes(proprietario)) {
+                    let row = tabela.insertRow();
+                    let cell1 = row.insertCell(0);
+                    let cell2 = row.insertCell(1);
+                    cell1.textContent = propriedade || "Desconhecido";
+                    cell2.textContent = proprietario || "Desconhecido";
+                }
+            });
+
+            // Armazena os dados no Local Storage
+            localStorage.setItem("dadosCSV", JSON.stringify(csvData));
+            localStorage.setItem("textoPDF", textoPDF);
+        }
+    </script>
+</body>
+</html>
