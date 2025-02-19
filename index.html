@@ -74,7 +74,7 @@
     </div>
 
     <script>
-        async function processarArquivos() {
+       async function processarArquivos() {
             const csvFile = document.getElementById('csvFile').files[0];
             const pdfFile = document.getElementById('pdfFile').files[0];
 
@@ -83,11 +83,17 @@
                 return;
             }
 
-            // Ler CSV
-            const csvText = await csvFile.text();
-            const csvData = Papa.parse(csvText, { header: true }).data;
+            // Ler o CSV como ArrayBuffer para detectar encoding
+            const readerCSV = new FileReader();
+            readerCSV.readAsArrayBuffer(csvFile);
+            readerCSV.onload = function(event) {
+                let text = new TextDecoder("windows-1252").decode(new Uint8Array(event.target.result)); // Corrige encoding do CSV
+                const csvData = Papa.parse(text, { header: true }).data;
+                processarPDF(pdfFile, csvData);
+            };
+        }
 
-            // Ler PDF usando PDF.js
+        async function processarPDF(pdfFile, csvData) {
             const reader = new FileReader();
             reader.readAsArrayBuffer(pdfFile);
             reader.onload = async function () {
@@ -105,14 +111,18 @@
             };
         }
 
-
         function compararDados(csvData, textoPDF) {
             const tabela = document.getElementById("resultadoTabela").getElementsByTagName("tbody")[0];
             tabela.innerHTML = ""; // Limpa a tabela antes de adicionar novos resultados
 
             csvData.forEach(item => {
-                const propriedade = item["Nome da propriedade"]?.trim();
-                const proprietario = item["Nome do proprietário"]?.trim();
+                let propriedade = item["Nome da propriedade"]?.trim();
+                let proprietario = item["Nome do proprietário"]?.trim();
+
+                // Normalizar os textos para evitar problemas de encoding
+                propriedade = normalizarTexto(propriedade);
+                proprietario = normalizarTexto(proprietario);
+                textoPDF = normalizarTexto(textoPDF);
 
                 if (textoPDF.includes(propriedade) || textoPDF.includes(proprietario)) {
                     let row = tabela.insertRow();
@@ -127,6 +137,12 @@
             localStorage.setItem("dadosCSV", JSON.stringify(csvData));
             localStorage.setItem("textoPDF", textoPDF);
         }
+
+        function normalizarTexto(texto) {
+            if (!texto) return "";
+            return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); // Remove acentos e coloca em minúsculas
+        }
+
     </script>
 </body>
 </html>
