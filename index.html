@@ -89,6 +89,7 @@
             readerCSV.onload = function(event) {
                 let text = new TextDecoder("windows-1252").decode(new Uint8Array(event.target.result)); // Corrige encoding do CSV
                 const csvData = Papa.parse(text, { header: true }).data;
+                console.log(csvData)
                 processarPDF(pdfFile, csvData);
             };
         }
@@ -116,8 +117,8 @@
             tabela.innerHTML = ""; // Limpa a tabela antes de adicionar novos resultados
 
             csvData.forEach(item => {
-                let propriedade = item["Nome da propriedade"]?.trim();
-                let proprietario = item["Nome do proprietário"]?.trim();
+                let propriedade = item["Nome da propriedade\n"]?.trim();
+                let proprietario = item["Nome do proprietário\n"]?.trim();
 
                 // Normalizar os textos para evitar problemas de encoding
                 propriedade = normalizarTexto(propriedade);
@@ -128,8 +129,10 @@
                     let row = tabela.insertRow();
                     let cell1 = row.insertCell(0);
                     let cell2 = row.insertCell(1);
-                    cell1.textContent = propriedade || "Desconhecido";
-                    cell2.textContent = proprietario || "Desconhecido";
+                    if(propriedade != "Desconhecido" || proprietario != "Desconhecido"){
+                        cell1.textContent = propriedade || "Desconhecido";
+                        cell2.textContent = proprietario || "Desconhecido";
+                    }
                 }
             });
 
